@@ -1,4 +1,6 @@
-from app.config.supabase import supabase_admin, supabase_public
+import httpx
+
+from app.config.settings import settings
 from app.repositories.profile_repository import ProfileRepository
 from app.utils.exceptions import AuthError, ConflictError, ValidationError
 
@@ -6,66 +8,81 @@ from app.utils.exceptions import AuthError, ConflictError, ValidationError
 class AuthService:
     """
     Regras de negócio de autenticação.
-    Não conhece FastAPI. Não conhece SQL. Só orquestra.
+    Usa HTTP direto na Auth API do Supabase (GoTrue) em vez do SDK,
+    porque o supabase-py 2.31 monta URL errada em auth.sign_up.
     """
 
     def __init__(self, profile_repo: ProfileRepository | None = None):
         self.profile_repo = profile_repo or ProfileRepository()
 
     def register(self, nome: str, email: str, password: str) -> dict:
-        try:
-            res = supabase_admin.auth.sign_up(
-                {
-                    "email": email,
-                    "password": password,
-                    "options": {"data": {"nome": nome}},
-                }
-            )
-        except Exception as e:
-            msg = str(e).lower()
-            if "already" in msg or "registered" in msg:
-                raise ValidationError("Email já cadastrado") from e
-            raise ValidationError("Falha ao criar conta") from e
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/signup"
+        headers = {
+            "apikey": settings.supabase_anon_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "email": email,
+            "password": password,
+            "data": {"nome": nome},
+        }
 
-        if not res.user:
+        response = httpx.post(url, headers=headers, json=payload, timeout=15)
+
+        if response.status_code >= 400:
+            body = response.json() if response.content else {}
+            msg = body.get("msg") or body.get("error_description") or "Falha ao criar conta"
+            if "already" in msg.lower() or "registered" in msg.lower():
+                raise ValidationError("Email já cadastrado")
+            raise ValidationError(msg)
+
+        data = response.json()
+
+        if not data.get("id"):
             raise ValidationError("Falha ao criar conta")
 
-        # Garante profile (caso não exista trigger no Supabase).
-        # Se já existir (trigger rodou), ignora silenciosamente.
         try:
-            self.profile_repo.create(user_id=res.user.id, nome=nome)
+            self.profile_repo.create(user_id=data["id"], nome=nome)
         except ConflictError:
             pass
 
         return {
-            "user_id": res.user.id,
-            "access_token": res.session.access_token if res.session else "",
-            "refresh_token": res.session.refresh_token if res.session else "",
+            "user_id": data["id"],
+            "access_token": data.get("access_token", ""),
+            "refresh_token": data.get("refresh_token", ""),
         }
 
     def login(self, email: str, password: str) -> dict:
-        try:
-            res = supabase_public.auth.sign_in_with_password(
-                {"email": email, "password": password}
-            )
-        except Exception as e:
-            raise AuthError("Email ou senha inválidos") from e
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/token?grant_type=password"
+        headers = {
+            "apikey": settings.supabase_anon_key,
+            "Content-Type": "application/json",
+        }
+        payload = {"email": email, "password": password}
 
-        if not res.session:
+        response = httpx.post(url, headers=headers, json=payload, timeout=15)
+
+        if response.status_code >= 400:
+            raise AuthError("Email ou senha inválidos")
+
+        data = response.json()
+
+        if not data.get("access_token"):
             raise AuthError("Email não confirmado")
 
         return {
-            "user_id": res.user.id,
-            "access_token": res.session.access_token,
-            "refresh_token": res.session.refresh_token,
+            "user_id": data["user"]["id"],
+            "access_token": data["access_token"],
+            "refresh_token": data["refresh_token"],
         }
 
     def forgot_password(self, email: str) -> None:
-        """
-        Nunca revela se o email existe (anti user-enumeration).
-        Nunca lança erro pro cliente.
-        """
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/recover"
+        headers = {
+            "apikey": settings.supabase_anon_key,
+            "Content-Type": "application/json",
+        }
         try:
-            supabase_public.auth.reset_password_email(email)
+            httpx.post(url, headers=headers, json={"email": email}, timeout=15)
         except Exception:
             pass
