@@ -6,7 +6,8 @@ class RegisterRequest(BaseModel):
 
     nome: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    # 72 = limite do bcrypt. Acima disso o Supabase trunca silenciosamente.
+    # Limite de 72 para evitar truncamento silencioso em algoritmos
+    # de hash do Supabase Auth. Ver docs/auth.md.
     password: str = Field(min_length=8, max_length=72)
 
 

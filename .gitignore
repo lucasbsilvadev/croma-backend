@@ -26,3 +26,5 @@ env/
 Thumbs.db
 .DS_Store
 pytest-output.txt
+
+snapshot.txt

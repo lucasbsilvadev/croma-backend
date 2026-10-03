@@ -4,6 +4,14 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "UP"]
+ignore = ["B008"] 
+
+# TODO: revisar strictness do mypy no MVP.
+# Hoje strict = true gera ruído em:
+# - Settings() (pydantic-settings preenche via .env, mypy nao sabe)
+# - dict sem parametros (dict[str, Any])
+# - retornos do supabase SDK (tipo JSON generico)
+# Decisao: relaxar regras especificas em vez de desligar strict.
 
 [tool.mypy]
 python_version = "3.12"
