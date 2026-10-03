@@ -16,3 +16,10 @@ def fake_user():
         "email": "fulano@example.com",
         "password": "senhaSegura123",
     }
+
+@pytest.fixture(autouse=True)
+def clear_overrides():
+    from app.main import app
+    app.dependency_overrides.clear()
+    yield
+    app.dependency_overrides.clear()

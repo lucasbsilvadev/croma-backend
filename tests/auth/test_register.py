@@ -12,12 +12,13 @@ def test_register_success(client, fake_user, monkeypatch):
     from app.routes import auth_routes
 
     client.app.dependency_overrides[auth_routes.get_auth_service] = lambda: mock_service
-
-    res = client.post("/auth/register", json=fake_user)
-
-    assert res.status_code == 201
-    assert res.json()["user_id"] == "uuid-123"
-    mock_service.register.assert_called_once()
+    try:
+        res = client.post("/auth/register", json=fake_user)
+        assert res.status_code == 201
+        assert res.json()["user_id"] == "uuid-123"
+        mock_service.register.assert_called_once()
+    finally:
+        client.app.dependency_overrides.clear()
 
 
 def test_register_invalid_email(client, fake_user):

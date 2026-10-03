@@ -14,9 +14,11 @@ def test_login_success(client):
     from app.routes import auth_routes
 
     client.app.dependency_overrides[auth_routes.get_auth_service] = lambda: mock_service
-
-    res = client.post("/auth/login", json={"email": "a@b.com", "password": "senha12345"})
-    assert res.status_code == 200
+    try:
+        res = client.post("/auth/login", json={"email": "a@b.com", "password": "senha12345"})
+        assert res.status_code == 200
+    finally:
+        client.app.dependency_overrides.clear()
 
 
 def test_login_invalid_credentials(client):
@@ -26,6 +28,8 @@ def test_login_invalid_credentials(client):
     from app.routes import auth_routes
 
     client.app.dependency_overrides[auth_routes.get_auth_service] = lambda: mock_service
-
-    res = client.post("/auth/login", json={"email": "a@b.com", "password": "senha12345"})
-    assert res.status_code == 401
+    try:
+        res = client.post("/auth/login", json={"email": "a@b.com", "password": "senha12345"})
+        assert res.status_code == 401
+    finally:
+        client.app.dependency_overrides.clear()
