@@ -14,3 +14,6 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --cov=app --cov-report=term-missing"
+markers = [
+    "integration: testes que batem em servicos externos (Supabase real). Lentos.",
+]
