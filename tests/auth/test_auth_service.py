@@ -86,6 +86,62 @@ class TestRegister:
 
         assert result["user_id"] == "uuid-1"
 
+    def test_register_swallows_fk_violation_race_condition(self):
+        """
+        GoTrue pode retornar o id do user antes do INSERT em auth.users
+        commitar (race condition documentada com Confirm email ligado).
+        Profile create falha com FK violation (23503), mas signup foi OK.
+        """
+        from postgrest.exceptions import APIError
+
+        repo = MagicMock()
+        repo.create.side_effect = APIError(
+            {
+                "message": (
+                    'insert or update on table "profiles" violates '
+                    'foreign key constraint "profiles_user_id_fkey"'
+                ),
+                "code": "23503",
+                "details": 'Key (user_id)=(uuid-race) is not present in table "users".',
+            }
+        )
+        service = AuthService(profile_repo=repo)
+
+        with patch("app.services.auth_service.httpx.post") as mock_post:
+            mock_post.return_value = _fake_httpx_response(
+                200,
+                {
+                    "id": "uuid-race",
+                    "email": "a@b.com",
+                    "confirmation_sent_at": "2026-10-03T20:00:00Z",
+                },
+            )
+
+            result = service.register("Fulano", "a@b.com", "senhaSegura123")
+
+        assert result["user_id"] == "uuid-race"
+        assert result["access_token"] == ""
+        assert result["refresh_token"] == ""
+
+    def test_register_raises_on_non_fk_api_error(self):
+        """Outros APIError (não 23503) devem propagar — não esconder bug."""
+        from postgrest.exceptions import APIError
+
+        repo = MagicMock()
+        repo.create.side_effect = APIError(
+            {"message": "relation does not exist", "code": "42P01"}
+        )
+        service = AuthService(profile_repo=repo)
+
+        with patch("app.services.auth_service.httpx.post") as mock_post:
+            mock_post.return_value = _fake_httpx_response(
+                200,
+                {"id": "uuid-x", "email": "a@b.com"},
+            )
+
+            with pytest.raises(APIError):
+                service.register("Fulano", "a@b.com", "senhaSegura123")
+
 
 class TestLogin:
     def test_login_returns_tokens_on_success(self):

@@ -38,9 +38,11 @@ class AuthService:
 
         data = response.json()
 
-        # Supabase retorna o usuário em data["user"] (com ou sem session).
-        # O id NÃO fica no top-level — fica em data["user"]["id"].
-        user = data.get("user") or {}
+        # Supabase muda o shape da resposta conforme 'Confirm email':
+        #   OFF: {"user": {...}, "access_token": ..., "refresh_token": ...}
+        #   ON:  {"id": ..., "email": ..., "confirmation_sent_at": ...}
+        # O objeto do user está em data["user"] OU no top-level.
+        user = data.get("user") or data
 
         if not user.get("id"):
             raise ValidationError("Falha ao criar conta")
@@ -49,6 +51,13 @@ class AuthService:
             self.profile_repo.create(user_id=user["id"], nome=nome)
         except ConflictError:
             pass
+        except Exception as e:
+            # postgrest.APIError expoe 'code' como atributo proprio
+            # (nao usa args[0]). supabase-py e postgrest vendorizam copias
+            # diferentes da classe, entao 'except APIError' nao pega.
+            code = getattr(e, "code", None)
+            if code != "23503":
+                raise
 
         return {
             "user_id": user["id"],
