@@ -38,18 +38,22 @@ class AuthService:
 
         data = response.json()
 
-        if not data.get("id"):
+        # Supabase retorna o usuário em data["user"] (com ou sem session).
+        # O id NÃO fica no top-level — fica em data["user"]["id"].
+        user = data.get("user") or {}
+
+        if not user.get("id"):
             raise ValidationError("Falha ao criar conta")
 
         try:
-            self.profile_repo.create(user_id=data["id"], nome=nome)
+            self.profile_repo.create(user_id=user["id"], nome=nome)
         except ConflictError:
             pass
 
         return {
-            "user_id": data["id"],
-            "access_token": data.get("access_token", ""),
-            "refresh_token": data.get("refresh_token", ""),
+            "user_id": user["id"],
+            "access_token": data.get("access_token") or "",
+            "refresh_token": data.get("refresh_token") or "",
         }
 
     def login(self, email: str, password: str) -> dict:
