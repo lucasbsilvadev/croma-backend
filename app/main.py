@@ -5,7 +5,12 @@ from slowapi.errors import RateLimitExceeded
 from app.middleware.cors import setup_cors
 from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIdMiddleware
-from app.routes import auth_routes, profile_routes
+from app.routes import (
+    admin_product_routes,
+    auth_routes,
+    product_routes,
+    profile_routes,
+)
 from app.utils.logging import setup_logging
 
 # Configura logging estruturado ANTES de qualquer coisa
@@ -30,6 +35,8 @@ app.add_middleware(RequestIdMiddleware)
 # routers
 app.include_router(auth_routes.router)
 app.include_router(profile_routes.router)
+app.include_router(product_routes.router)
+app.include_router(admin_product_routes.router)
 
 
 @app.get("/health", tags=["infra"])
