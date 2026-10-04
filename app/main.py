@@ -9,8 +9,10 @@ from app.routes import (
     address_routes,
     admin_product_routes,
     auth_routes,
+    order_routes,
     product_routes,
     profile_routes,
+    shipping_routes,
 )
 from app.utils.logging import setup_logging
 
@@ -39,6 +41,8 @@ app.include_router(profile_routes.router)
 app.include_router(product_routes.router)
 app.include_router(admin_product_routes.router)
 app.include_router(address_routes.router)
+app.include_router(shipping_routes.router)
+app.include_router(order_routes.router)
 
 
 @app.get("/health", tags=["infra"])
