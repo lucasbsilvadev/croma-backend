@@ -6,6 +6,7 @@ from app.middleware.cors import setup_cors
 from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIdMiddleware
 from app.routes import (
+    address_routes,
     admin_product_routes,
     auth_routes,
     product_routes,
@@ -37,6 +38,7 @@ app.include_router(auth_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(product_routes.router)
 app.include_router(admin_product_routes.router)
+app.include_router(address_routes.router)
 
 
 @app.get("/health", tags=["infra"])
