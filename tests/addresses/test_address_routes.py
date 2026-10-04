@@ -87,9 +87,9 @@ def test_delete_returns_204(client, mock_service, mock_user):
     assert res.status_code == 204
 
 
-def test_delete_returns_404_for_other_user(client, mock_service, mock_user):
+def test_update_returns_404_for_other_user(client, mock_service, mock_user):
     from app.utils.exceptions import NotFoundError
-    mock_service.delete.side_effect = NotFoundError("Endereço não encontrado")
+    mock_service.update.side_effect = NotFoundError("Endereço não encontrado")
 
-    res = client.delete("/addresses/a-do-outro")
+    res = client.patch("/addresses/a-do-outro", json={"cidade": "Goiânia"})
     assert res.status_code == 404
