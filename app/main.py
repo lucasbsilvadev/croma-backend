@@ -4,7 +4,12 @@ from slowapi.errors import RateLimitExceeded
 
 from app.middleware.cors import setup_cors
 from app.middleware.rate_limit import limiter
+from app.middleware.request_id import RequestIdMiddleware
 from app.routes import auth_routes, profile_routes
+from app.utils.logging import setup_logging
+
+# Configura logging estruturado ANTES de qualquer coisa
+setup_logging()
 
 app = FastAPI(
     title="Croma Drip API",
@@ -19,15 +24,15 @@ setup_cors(app)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# routers
+# middleware de ID da requisição
+app.add_middleware(RequestIdMiddleware)
 
+# routers
 app.include_router(auth_routes.router)
 app.include_router(profile_routes.router)
+
 
 @app.get("/health", tags=["infra"])
 async def health():
     """Healthcheck. Usado por hosting/monitoramento."""
     return {"status": "ok"}
-
-
-

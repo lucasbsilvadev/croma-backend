@@ -1,5 +1,5 @@
 from app.repositories.profile_repository import ProfileRepository
-from app.utils.exceptions import AuthError
+from app.utils.exceptions import NotFoundError
 
 
 class ProfileService:
@@ -12,15 +12,16 @@ class ProfileService:
 
     def get_me(self, user_id: str, email: str) -> dict:
         """
-        Retorna dados do user logado (profile + email do auth).
+        Retorna dados do user logado (profile + email do auth + role).
         """
         profile = self.profile_repo.get_by_user_id(user_id)
 
         if not profile:
-            raise AuthError("Perfil não encontrado")
+            raise NotFoundError("Perfil não encontrado")
 
         return {
             "user_id": user_id,
             "email": email,
             "nome": profile["nome"],
+            "role": profile.get("role", "user"),
         }

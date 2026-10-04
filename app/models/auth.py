@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.utils.validators import PASSWORD_RULES_MESSAGE, is_strong_password
 
 
 class RegisterRequest(BaseModel):
@@ -6,13 +7,18 @@ class RegisterRequest(BaseModel):
 
     nome: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    # Limite de 72 para evitar truncamento silencioso em algoritmos
-    # de hash do Supabase Auth. Ver docs/auth.md.
     password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def validate_strong_password(cls, v: str) -> str:
+        if not is_strong_password(v):
+            raise ValueError(PASSWORD_RULES_MESSAGE)
+        return v
 
 
 class LoginRequest(BaseModel):
-    """Payload de login."""
+    """Payload de login. NÃO valida força — só o cadastro exige."""
 
     email: EmailStr
     password: str
