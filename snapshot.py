@@ -2,7 +2,7 @@
 from pathlib import Path
 
 IGNORE_DIRS = {
-    ".venv", "venv", "env",
+    ".venv", "venv", ".env", "env",
     "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
     ".git", ".idea", ".vscode",
     "node_modules", "htmlcov",

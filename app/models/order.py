@@ -54,6 +54,7 @@ class OrderResponse(BaseModel):
     payment_method: str | None
     created_at: datetime
     updated_at: datetime
+    address_snapshot: dict | None = None
     items: list[OrderItemResponse] = []
 
     @field_validator("subtotal", "frete", "total", mode="before")

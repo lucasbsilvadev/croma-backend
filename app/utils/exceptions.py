@@ -36,3 +36,20 @@ class ValidationError(HTTPException):
         super().__init__(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail
         )
+
+class PaymentError(HTTPException):
+    """Erro genérico do módulo de pagamento."""
+
+    def __init__(self, detail: str = "Erro no pagamento",
+                 status_code: int = status.HTTP_400_BAD_REQUEST):
+        super().__init__(status_code=status_code, detail=detail)
+
+
+class InvalidSignatureError(HTTPException):
+    """
+    Assinatura HMAC inválida no webhook do Mercado Pago.
+    Nunca deve retornar detalhes — só 401 seco.
+    """
+
+    def __init__(self, detail: str = "Assinatura inválida"):
+        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)

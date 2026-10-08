@@ -8,6 +8,20 @@ from typing import Any
 class JsonFormatter(logging.Formatter):
     """Formatter que emite cada log como uma linha JSON."""
 
+    # Allowlist de campos extras que podem aparecer no log.
+    # Qualquer campo fora dessa lista é silenciosamente descartado —
+    # isso é a barreira de segurança que impede vazamento por engano.
+    _ALLOWED_EXTRA_FIELDS = (
+        "event",
+        "request_id",
+        "user_id",
+        "endpoint",
+        "status",
+        "duration_ms",
+        "error",
+        "mp_error_detail",
+    )
+
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -16,8 +30,7 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # Campos extras injetados via `logger.info("...", extra={...})`
-        for key in ("event", "request_id", "user_id", "endpoint", "status", "duration_ms", "error"):
+        for key in self._ALLOWED_EXTRA_FIELDS:
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
 

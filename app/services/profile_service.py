@@ -24,4 +24,6 @@ class ProfileService:
             "email": email,
             "nome": profile["nome"],
             "role": profile.get("role", "user"),
+            "cpf_cnpj": profile.get("cpf_cnpj"),
+            "tipo_pessoa": profile.get("tipo_pessoa"),
         }

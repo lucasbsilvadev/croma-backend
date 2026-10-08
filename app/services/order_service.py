@@ -88,6 +88,19 @@ class OrderService:
 
         # 4. Total
         total = subtotal + frete
+        
+        # Snapshot do endereço (PAYMENT-21): fotografia histórica.
+        # Não incluir id/user_id/principal.
+        address_snapshot = {
+            "nome_destinatario": address["nome_destinatario"],
+            "cep": address["cep"],
+            "logradouro": address["logradouro"],
+            "numero": address.get("numero"),
+            "complemento": address.get("complemento"),
+            "bairro": address["bairro"],
+            "cidade": address["cidade"],
+            "estado": address["estado"],
+        }
 
         # 5. Cria order
         order_payload = {
@@ -99,6 +112,7 @@ class OrderService:
             "total": str(total),
             "notes": data.get("notes"),
             "payment_status": "pending",
+            "address_snapshot": address_snapshot,   # ← ESSENCIAL
         }
 
         order = self.order_repo.create(order_payload)

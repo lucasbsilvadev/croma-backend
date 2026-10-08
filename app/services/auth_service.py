@@ -18,7 +18,7 @@ class AuthService:
     def __init__(self, profile_repo: ProfileRepository | None = None):
         self.profile_repo = profile_repo or ProfileRepository()
 
-    def register(self, nome: str, email: str, password: str) -> dict:
+    def register(self, nome: str, email: str, password: str, cpf_cnpj: str) -> dict:
         url = f"{settings.supabase_url.rstrip('/')}/auth/v1/signup"
         headers = {
             "apikey": settings.supabase_anon_key,
@@ -71,7 +71,9 @@ class AuthService:
 
         # Cria profile idempotentemente. Se um trigger já criou, retorna o existente.
         # Se deu FK race (23503), tenta de novo dentro do ensure_profile.
-        self.profile_repo.ensure_profile(user_id=user_id, nome=nome)
+        self.profile_repo.ensure_profile(
+            user_id=user_id, nome=nome, cpf_cnpj=cpf_cnpj
+        )
 
         logger.info(
             "Register bem-sucedido",

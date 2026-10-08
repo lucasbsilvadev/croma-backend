@@ -1,5 +1,12 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from app.utils.validators import PASSWORD_RULES_MESSAGE, is_strong_password
+from app.utils.validators import (
+    CPF_CNPJ_RULES_MESSAGE,
+    PASSWORD_RULES_MESSAGE,
+    is_strong_password,
+    is_valid_cpf_cnpj,
+    normalize_cpf_cnpj,
+)
+
 
 
 class RegisterRequest(BaseModel):
@@ -8,6 +15,7 @@ class RegisterRequest(BaseModel):
     nome: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
+    cpf_cnpj: str = Field(min_length=11, max_length=18)
 
     @field_validator("password")
     @classmethod
@@ -15,6 +23,13 @@ class RegisterRequest(BaseModel):
         if not is_strong_password(v):
             raise ValueError(PASSWORD_RULES_MESSAGE)
         return v
+
+    @field_validator("cpf_cnpj")
+    @classmethod
+    def validate_cpf_cnpj(cls, v: str) -> str:
+        if not is_valid_cpf_cnpj(v):
+            raise ValueError(CPF_CNPJ_RULES_MESSAGE)
+        return normalize_cpf_cnpj(v)
 
 
 class LoginRequest(BaseModel):

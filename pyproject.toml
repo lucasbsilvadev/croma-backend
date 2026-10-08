@@ -21,7 +21,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-v --cov=app --cov-report=term-missing"
+addopts = "-v --cov=app --cov-report=term-missing -m 'not integration'"
 markers = [
     "integration: testes que batem em servicos externos (Supabase real). Lentos.",
 ]

@@ -15,13 +15,14 @@ def client():
 @pytest.fixture
 def fake_user():
     """
-    Payload válido de cadastro. Senha atende à política forte:
-    8-72 chars, 1 maiúscula, 1 minúscula, 1 número, 1 especial.
+    Payload válido de cadastro. Senha atende à política forte.
+    CPF: 11144477735 (válido, dígitos verificadores conferem).
     """
     return {
         "nome": "Fulano Teste",
         "email": "fulano@example.com",
         "password": "SenhaSegura123!",
+        "cpf_cnpj": "11144477735",
     }
 
 

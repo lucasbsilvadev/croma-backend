@@ -38,10 +38,15 @@ def test_full_auth_flow(client, unique_email):
     """
     password = "SenhaSegura123!"
 
-    # 1. Register
+        # 1. Register
     register_res = client.post(
         "/auth/register",
-        json={"nome": "Teste Integracao", "email": unique_email, "password": password},
+        json={
+            "nome": "Teste Integracao",
+            "email": unique_email,
+            "password": password,
+            "cpf_cnpj": "11144477735",
+        },
     )
     assert register_res.status_code == 201, register_res.text
     register_body = register_res.json()

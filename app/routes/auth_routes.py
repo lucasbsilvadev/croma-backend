@@ -26,7 +26,7 @@ async def register(
     service: AuthService = Depends(get_auth_service),
 ):
     """Cria conta. Retorna tokens se confirmação de email estiver desligada."""
-    return service.register(payload.nome, payload.email, payload.password)
+    return service.register(payload.nome, payload.email, payload.password, payload.cpf_cnpj)
 
 
 @router.post("/login", response_model=AuthResponse)

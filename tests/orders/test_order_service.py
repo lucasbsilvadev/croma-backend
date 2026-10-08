@@ -47,7 +47,16 @@ def _product(id="p1", preco="100.00", estoque=10, ativo=True, nome="Calça", slu
 
 
 def _address(id="a1", user_id="u1", cep="73062702"):
-    return {"id": id, "user_id": user_id, "cep": cep}
+    return {
+        "id": id, "user_id": user_id, "cep": cep,
+        "nome_destinatario": "Fulano",
+        "logradouro": "Rua X",
+        "numero": "10",
+        "complemento": None,
+        "bairro": "Centro",
+        "cidade": "Brasília",
+        "estado": "DF",
+    }
 
 
 class TestCreateOrder:

@@ -11,6 +11,8 @@ import pytest
 from app.services.auth_service import AuthService
 from app.utils.exceptions import AuthError, ValidationError
 
+_CPF = "11144477735"
+
 
 def _fake_httpx_response(status_code: int, json_data: dict | None = None):
     """Helper: cria um mock de httpx.Response."""
@@ -42,11 +44,13 @@ class TestRegister:
                 },
             )
 
-            result = service.register("Fulano", "a@b.com", "SenhaSegura123!")
+            result = service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
         assert result["user_id"] == "uuid-1"
         assert result["access_token"] == "tok"
-        repo.ensure_profile.assert_called_once_with(user_id="uuid-1", nome="Fulano")
+        repo.ensure_profile.assert_called_once_with(
+        user_id="uuid-1", nome="Fulano", cpf_cnpj=_CPF
+)
 
     def test_register_logs_success_event(self, caplog):
         """Register bem-sucedido emite AUTH_REGISTER_SUCCESS com user_id."""
@@ -60,7 +64,7 @@ class TestRegister:
                 200,
                 {"user": {"id": "uuid-1"}, "access_token": "tok", "refresh_token": "ref"},
             )
-            service.register("Fulano", "a@b.com", "SenhaSegura123!")
+            service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
         success = [
             r for r in caplog.records
@@ -79,7 +83,7 @@ class TestRegister:
             )
 
             with pytest.raises(ValidationError, match="já cadastrado"):
-                service.register("Fulano", "a@b.com", "SenhaSegura123!")
+                service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
     def test_register_raises_validation_on_unknown_error(self):
         """Supabase retorna erro genérico → ValidationError."""
@@ -89,7 +93,7 @@ class TestRegister:
             mock_post.return_value = _fake_httpx_response(500, {"msg": "Internal error"})
 
             with pytest.raises(ValidationError):
-                service.register("Fulano", "a@b.com", "SenhaSegura123!")
+                service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
     def test_register_returns_empty_tokens_when_confirm_email_on(self):
         """
@@ -109,13 +113,15 @@ class TestRegister:
                 },
             )
 
-            result = service.register("Fulano", "a@b.com", "SenhaSegura123!")
+            result = service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
         assert result["user_id"] == "uuid-confirm"
         assert result["access_token"] == ""
         assert result["refresh_token"] == ""
         # ensure_profile foi chamado mesmo sem tokens — profile existe
-        repo.ensure_profile.assert_called_once_with(user_id="uuid-confirm", nome="Fulano")
+        repo.ensure_profile.assert_called_once_with(
+            user_id="uuid-confirm", nome="Fulano", cpf_cnpj=_CPF
+        )
 
     def test_register_raises_when_response_has_no_user_id(self):
         """Supabase devolve 200 mas sem id → ValidationError, não passa silencioso."""
@@ -125,7 +131,7 @@ class TestRegister:
             mock_post.return_value = _fake_httpx_response(200, {"foo": "bar"})
 
             with pytest.raises(ValidationError):
-                service.register("Fulano", "a@b.com", "SenhaSegura123!")
+                service.register("Fulano", "a@b.com", "SenhaSegura123!", _CPF)
 
     def test_register_never_logs_password_or_tokens(self, caplog):
         """
@@ -146,7 +152,7 @@ class TestRegister:
                     "refresh_token": "refresh-secret",
                 },
             )
-            service.register("Fulano", "a@b.com", "SenhaUltraSecreta123!")
+            service.register("Fulano", "a@b.com", "SenhaUltraSecreta123!", _CPF)
 
         for record in caplog.records:
             # Concatena tudo que o record expõe — args, kwargs, extra

@@ -14,3 +14,5 @@ class MeResponse(BaseModel):
     email: str
     nome: str
     role: str
+    cpf_cnpj: str | None = None
+    tipo_pessoa: str | None = None

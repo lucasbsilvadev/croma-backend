@@ -46,7 +46,40 @@ class OrderRepository:
             .execute()
         )
         return res.data or []
+    
+    def list_all(
+        self,
+        *,
+        status: str | None = None,
+        payment_status: str | None = None,
+        user_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Listagem admin com filtros (PAYMENT-23)."""
+        query = supabase_admin.table("orders").select("*")
+        if status:
+            query = query.eq("status", status)
+        if payment_status:
+            query = query.eq("payment_status", payment_status)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        res = (
+            query.order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+        return res.data or []
 
+    def update_status(self, order_id: str, status: str) -> dict:
+        res = (
+            supabase_admin.table("orders")
+            .update({"status": status})
+            .eq("id", order_id)
+            .execute()
+        )
+        return res.data[0]
+    
     # ============================================================
     # order_items
     # ============================================================

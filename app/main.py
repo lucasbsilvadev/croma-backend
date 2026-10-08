@@ -7,12 +7,15 @@ from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIdMiddleware
 from app.routes import (
     address_routes,
+    admin_order_routes,      # NOVO
     admin_product_routes,
     auth_routes,
     order_routes,
+    payment_routes,           # NOVO
     product_routes,
     profile_routes,
     shipping_routes,
+    webhook_routes,           # NOVO
 )
 from app.utils.logging import setup_logging
 
@@ -43,7 +46,9 @@ app.include_router(admin_product_routes.router)
 app.include_router(address_routes.router)
 app.include_router(shipping_routes.router)
 app.include_router(order_routes.router)
-
+app.include_router(payment_routes.router)
+app.include_router(webhook_routes.router)
+app.include_router(admin_order_routes.router)
 
 @app.get("/health", tags=["infra"])
 async def health():

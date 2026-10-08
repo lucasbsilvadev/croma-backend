@@ -10,14 +10,27 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # supabase
     supabase_url: str
     supabase_anon_key: str
     supabase_service_key: str
+
+    # ambiente
     env: str = "dev"
+
+    # Mercado Pago
+    mp_access_token: str
+    mp_public_key: str
+    mp_webhook_secret: str
+    mp_env: str = "sandbox"
 
     @property
     def is_dev(self) -> bool:
         return self.env == "dev"
+
+    @property
+    def is_mp_sandbox(self) -> bool:
+        return self.mp_env == "sandbox"
 
 
 settings = Settings()
