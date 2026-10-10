@@ -27,16 +27,6 @@ MP_BASE_URL_SANDBOX = "https://api.mercadopago.com"  # MP usa a mesma base; cred
 # ============================================================
 # Sanitização de log (defesa em profundidade)
 # ============================================================
-#
-# Aplicada ao corpo de erro do MP antes de virar log.
-# Mesmo com o gate dev+sandbox, ainda passamos por aqui —
-# porque o MP às vezes ecoa `payer.identification.number`
-# dentro de `cause[].description`.
-#
-# Estes regex são deliberadamente conservadores: preferem
-# redigir demais a deixar passar. Nunca são usados para
-# ler secrets — secrets não são lidos em nenhum ponto deste
-# módulo (access_token não é logado).
 
 _SENSITIVE_PATTERNS = [
     re.compile(r"\b\d{11}\b"),                       # CPF (11 dígitos)
@@ -51,15 +41,7 @@ _MAX_LOG_FIELD_LEN = 200
 
 
 def _sanitize_log_string(value: Any, max_len: int = _MAX_LOG_FIELD_LEN) -> str:
-    """
-    Converte um valor arbitrário em string segura para log.
-
-    - None vira string vazia.
-    - Trunca em `max_len` com reticências.
-    - Substitui padrões sensíveis por '<redacted>'.
-
-    Nunca é usada sobre secrets — esses não são lidos.
-    """
+    """Converte um valor arbitrário em string segura para log."""
     if value is None:
         return ""
     s = str(value)
@@ -72,12 +54,13 @@ def _sanitize_log_string(value: Any, max_len: int = _MAX_LOG_FIELD_LEN) -> str:
 
 def _should_log_mp_error_detail() -> bool:
     """
-    Gate de segurança: detalhe do erro do MP só é logado em dev + sandbox.
+    Habilita log detalhado do erro do MP quando MP_DEBUG_ERRORS=true.
 
-    Fora desse cenário, o comportamento permanece genérico
-    (apenas `status`), e o corpo do erro nem sequer é lido.
+    Independente de MP_ENV — assim dá pra debugar 401 em produção
+    sem trocar ambiente. A sanitização de CPF/email/token continua
+    sendo aplicada antes de qualquer coisa sair no log.
     """
-    return settings.env == "dev" and settings.mp_env == "sandbox"
+    return settings.mp_debug_errors
 
 
 class MPClient:
@@ -90,7 +73,6 @@ class MPClient:
 
         # Diagnóstico seguro do runtime.
         # Registra apenas presença/prefixo/comprimento — nunca o valor.
-        # Também atrás do gate dev+sandbox.
         if _should_log_mp_error_detail():
             logger.debug(
                 "MPClient inicializado",
@@ -122,21 +104,7 @@ class MPClient:
 
     @staticmethod
     def _extract_mp_error_detail(response: httpx.Response) -> dict | None:
-        """
-        Extrai um dict sanitizado do corpo de erro do MP.
-
-        Retorna None se o corpo não for JSON parseável ou não tiver
-        shape reconhecível. O chamador só invoca quando o gate
-        dev+sandbox passa.
-
-        Campos extraídos (todos sanitizados individualmente):
-          - status: int HTTP
-          - mp_request_id: header x-request-id do MP (correlação técnica)
-          - error: campo `error` do body, quando string
-          - message: campo `message` do body, quando string
-          - cause_codes: lista de `cause[].code`
-          - cause_descriptions: lista de `cause[].description`
-        """
+        """Extrai dict sanitizado do corpo de erro do MP."""
         try:
             body = response.json()
         except Exception:
@@ -190,15 +158,13 @@ class MPClient:
                                status_code=502) from e
 
         if response.status_code >= 400:
-            # Log base: sempre. `status` não é sensível.
             extra: dict[str, Any] = {
                 "event": "MP_REQUEST_FAILED",
                 "status": response.status_code,
             }
 
-            # Detalhe do erro: SOMENTE em dev + sandbox.
-            # Em produção, `_extract_mp_error_detail` nem é chamado —
-            # o corpo do erro não é lido nem processado.
+            # Detalhe do erro: controlado por MP_DEBUG_ERRORS.
+            # Independente de MP_ENV — útil pra debugar 401 em prod.
             if _should_log_mp_error_detail():
                 detail = self._extract_mp_error_detail(response)
                 if detail is not None:
@@ -206,8 +172,6 @@ class MPClient:
 
             logger.warning("MP retornou erro", extra=extra)
 
-            # Cliente da API continua recebendo 502 genérico.
-            # Detalhe real fica só no log interno (dev+sandbox).
             raise PaymentError(
                 "Mercado Pago rejeitou a operação",
                 status_code=502,
@@ -220,15 +184,7 @@ class MPClient:
     # ============================================================
 
     def create_pix_payment(self, payload: dict, idempotency_key: str) -> dict:
-        """
-        POST /v1/payments com payment_method_id=pix.
-
-        Retorna o objeto do pagamento com:
-          - id
-          - point_of_interaction.transaction_data.qr_code
-          - point_of_interaction.transaction_data.qr_code_base64
-          - point_of_interaction.transaction_data.ticket_url
-        """
+        """POST /v1/payments com payment_method_id=pix."""
         return self._request(
             "POST", "/v1/payments",
             json=payload,
@@ -244,14 +200,7 @@ class MPClient:
     # ============================================================
 
     def create_card_preference(self, payload: dict, idempotency_key: str) -> dict:
-        """
-        POST /checkout/preferences.
-
-        Retorna:
-          - id (preference_id)
-          - init_point
-          - sandbox_init_point
-        """
+        """POST /checkout/preferences."""
         return self._request(
             "POST", "/checkout/preferences",
             json=payload,
@@ -273,21 +222,7 @@ class MPClient:
         x_signature: str,
         secret: str | None = None,
     ) -> None:
-        """
-        Valida a assinatura HMAC do webhook do Mercado Pago.
-
-        Formato do header x-signature:
-            ts=<timestamp>,v1=<hmac_sha256_hex>
-
-        Manifest assinado (formato oficial do MP):
-            id:<data_id>;request-id:<x_request_id>;ts:<ts>;
-
-        `data_id` deve vir do QUERY STRING (?data.id=...) da request,
-        não do body — o MP assina o valor que veio na URL.
-
-        Levanta InvalidSignatureError se inválida.
-        Nunca loga o secret nem o payload.
-        """
+        """Valida a assinatura HMAC do webhook do Mercado Pago."""
         secret = secret or settings.mp_webhook_secret
 
         if not x_signature:
@@ -297,7 +232,6 @@ class MPClient:
             )
             raise InvalidSignatureError()
 
-        # Parse do header: "ts=...,v1=..."
         parts: dict[str, str] = {}
         for chunk in x_signature.split(","):
             if "=" in chunk:
