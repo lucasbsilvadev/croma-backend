@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     mp_webhook_secret: str
     mp_env: str = "sandbox"
 
+    # Flag de diagnóstico: quando true, loga detalhe sanitizado
+    # do erro retornado pelo Mercado Pago. Independe de MP_ENV.
+    mp_debug_errors: bool = False
+
     @property
     def is_dev(self) -> bool:
         return self.env == "dev"
