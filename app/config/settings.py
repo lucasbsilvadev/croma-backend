@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     mp_webhook_secret: str
     mp_env: str = "sandbox"
 
+    # frontend teste
+    extra_cors_origins: str = ""
+
     # Flag de diagnóstico: quando true, loga detalhe sanitizado
     # do erro retornado pelo Mercado Pago. Independe de MP_ENV.
     mp_debug_errors: bool = False
