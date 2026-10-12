@@ -3,8 +3,8 @@ Contratos HTTP do módulo de pagamento.
 Referência: PAYMENT-22, PAYMENT-31.
 """
 from datetime import datetime
-
-from pydantic import BaseModel, Field
+from decimal import Decimal
+from pydantic import BaseModel, Field, field_validator
 
 
 # ============================================================
@@ -81,3 +81,22 @@ class AdminOrderResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[dict] = []
+
+    @field_validator("subtotal", "frete", "total", mode="before")
+    @classmethod
+    def decimal_to_str(cls, v):
+        """
+        Converte Decimal/float/int/str pra string com 2 casas.
+
+        O Supabase devolve colunas `numeric` como float em algumas
+        versões do driver. Pydantic v2 não coage float→str por padrão,
+        então convertemos explicitamente aqui.
+        Espelho exato do validator de OrderResponse.
+        """
+        if isinstance(v, Decimal):
+            return f"{v:.2f}"
+        if isinstance(v, (int, float)):
+            return f"{Decimal(str(v)):.2f}"
+        if isinstance(v, str):
+            return f"{Decimal(v):.2f}"
+        return v
