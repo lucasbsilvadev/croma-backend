@@ -10,15 +10,6 @@ def _parse_origins(raw: str) -> list[str]:
 
 
 def setup_cors(app: FastAPI) -> None:
-    """
-    CORS restritivo.
-
-    Origens:
-      - Domínios oficiais: sempre liberados.
-      - localhost: só em dev (ENV=dev).
-      - EXTRA_CORS_ORIGINS: domínios temporários de teste (comma-separated),
-        pra permitir validar em prod de teste antes do domínio oficial entrar.
-    """
     origins: list[str] = [
         "https://cromadrip.com.br",
         "https://www.cromadrip.com.br",
@@ -31,9 +22,9 @@ def setup_cors(app: FastAPI) -> None:
             "http://127.0.0.1:5173",
         ]
 
-    origins += _parse_origins(settings.extra_cors_origins)
+    extra = _parse_origins(settings.extra_cors_origins)
+    origins += extra
 
-    # Dedup preservando ordem
     seen: set[str] = set()
     unique_origins: list[str] = []
     for origin in origins:
@@ -41,12 +32,18 @@ def setup_cors(app: FastAPI) -> None:
             seen.add(origin)
             unique_origins.append(origin)
 
-    # croma-backend/app/middleware/cors.py
+    # DIAGNÓSTICO — remover quando CORS estiver 100%.
+    import logging
+    logging.getLogger(__name__).info(
+        f"CORS_SETUP origins={unique_origins!r} "
+        f"extra_raw={settings.extra_cors_origins!r} "
+        f"env={settings.env!r}"
+    )
 
     app.add_middleware(
-    CORSMiddleware,
-    allow_origins=unique_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],  # ← aqui
-)
+        CORSMiddleware,
+        allow_origins=unique_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    )
