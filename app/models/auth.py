@@ -8,7 +8,6 @@ from app.utils.validators import (
 )
 
 
-
 class RegisterRequest(BaseModel):
     """Payload de cadastro."""
 
@@ -16,6 +15,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
     cpf_cnpj: str = Field(min_length=11, max_length=18)
+    terms_version: str = Field(min_length=1, max_length=64)
 
     @field_validator("password")
     @classmethod
@@ -30,6 +30,15 @@ class RegisterRequest(BaseModel):
         if not is_valid_cpf_cnpj(v):
             raise ValueError(CPF_CNPJ_RULES_MESSAGE)
         return normalize_cpf_cnpj(v)
+
+    @field_validator("terms_version")
+    @classmethod
+    def validate_terms_version(cls, v: str) -> str:
+        """Aceita só versões com formato conhecido (defesa contra payload estranho)."""
+        v = v.strip()
+        if not v:
+            raise ValueError("terms_version não pode ser vazio")
+        return v
 
 
 class LoginRequest(BaseModel):

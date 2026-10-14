@@ -23,6 +23,7 @@ def fake_user():
         "email": "fulano@example.com",
         "password": "SenhaSegura123!",
         "cpf_cnpj": "11144477735",
+        "terms_version": "2026-10-13",
     }
 
 

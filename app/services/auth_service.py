@@ -2,6 +2,8 @@ import httpx
 
 from app.config.settings import settings
 from app.repositories.profile_repository import ProfileRepository
+from app.repositories.terms_repository import TermsRepository
+from app.services.terms_service import TermsService
 from app.utils.exceptions import AuthError, ValidationError
 from app.utils.logging import get_logger
 
@@ -15,10 +17,40 @@ class AuthService:
     porque o supabase-py 2.31 monta URL errada em auth.sign_up.
     """
 
-    def __init__(self, profile_repo: ProfileRepository | None = None):
+    def __init__(
+        self,
+        profile_repo: ProfileRepository | None = None,
+        terms_repo: TermsRepository | None = None,
+        terms_service: TermsService | None = None,
+    ):
         self.profile_repo = profile_repo or ProfileRepository()
+        self.terms_repo = terms_repo or TermsRepository()
+        self.terms_service = terms_service or TermsService()
 
-    def register(self, nome: str, email: str, password: str, cpf_cnpj: str) -> dict:
+    def register(
+        self,
+        nome: str,
+        email: str,
+        password: str,
+        cpf_cnpj: str,
+        terms_version: str,
+    ) -> dict:
+        """
+        Cadastra o usuário no Supabase Auth, cria profile local e
+        registra aceite dos termos.
+
+        Ordem:
+        1. Valida `terms_version` contra `terms_versions` (fail-closed, LGPD-01).
+           Se inválida, 422 e NADA é criado.
+        2. Signup no Supabase Auth.
+        3. `ensure_profile` (idempotente).
+        4. `create_acceptance` com `document_hash` da versão validada.
+        """
+        # 1. Fail-closed ANTES de qualquer coisa.
+        # Se o front mandar uma versão desconhecida, nem chega no Supabase.
+        version_row = self.terms_service.validate_version(terms_version)
+        document_hash = version_row.get("document_hash")
+
         url = f"{settings.supabase_url.rstrip('/')}/auth/v1/signup"
         headers = {
             "apikey": settings.supabase_anon_key,
@@ -69,11 +101,33 @@ class AuthService:
 
         user_id = user["id"]
 
-        # Cria profile idempotentemente. Se um trigger já criou, retorna o existente.
+        # 3. Cria profile idempotentemente. Se um trigger já criou, retorna o existente.
         # Se deu FK race (23503), tenta de novo dentro do ensure_profile.
         self.profile_repo.ensure_profile(
             user_id=user_id, nome=nome, cpf_cnpj=cpf_cnpj
         )
+
+        # 4. Registra aceite dos Termos de Uso (idempotente por design).
+        # Passa o document_hash da versão validada — prova de qual texto foi aceito.
+        try:
+            self.terms_repo.create_acceptance(
+                user_id=user_id,
+                terms_version=terms_version,
+                document_hash=document_hash,
+            )
+        except Exception as e:
+            # Se o aceite falhar, loga mas NÃO falha o cadastro.
+            # O gate de UI + /me detectam a ausência e forçam re-aceite.
+            logger.warning(
+                "Register criou user mas aceite falhou",
+                extra={
+                    "event": "TERMS_ACCEPT_FAILED",
+                    "user_id": user_id,
+                    "error": type(e).__name__,
+                },
+            )
+            # Não re-raise: cadastro é mais importante que aceite (usuário
+            # pode re-aceitar depois; perder a conta não).
 
         logger.info(
             "Register bem-sucedido",

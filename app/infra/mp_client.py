@@ -8,7 +8,6 @@ Referência: PAYMENT-06, PAYMENT-28.
 """
 import hashlib
 import hmac
-import re
 import uuid
 from typing import Any
 
@@ -16,7 +15,7 @@ import httpx
 
 from app.config.settings import settings
 from app.utils.exceptions import InvalidSignatureError, PaymentError
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log_string
 
 logger = get_logger(__name__)
 
@@ -24,32 +23,9 @@ MP_BASE_URL_PROD = "https://api.mercadopago.com"
 MP_BASE_URL_SANDBOX = "https://api.mercadopago.com"  # MP usa a mesma base; credencial define o ambiente
 
 
-# ============================================================
-# Sanitização de log (defesa em profundidade)
-# ============================================================
-
-_SENSITIVE_PATTERNS = [
-    re.compile(r"\b\d{11}\b"),                       # CPF (11 dígitos)
-    re.compile(r"\b\d{14}\b"),                       # CNPJ (14 dígitos)
-    re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"),     # email
-    re.compile(r"\bBearer\s+[A-Za-z0-9._-]+"),       # Authorization Bearer
-    re.compile(r"\bTEST-[A-Za-z0-9-]+"),             # MP access token sandbox
-    re.compile(r"\bAPP_USR-[A-Za-z0-9-]+"),          # MP access token prod
-]
-
-_MAX_LOG_FIELD_LEN = 200
-
-
-def _sanitize_log_string(value: Any, max_len: int = _MAX_LOG_FIELD_LEN) -> str:
-    """Converte um valor arbitrário em string segura para log."""
-    if value is None:
-        return ""
-    s = str(value)
-    if len(s) > max_len:
-        s = s[:max_len] + "…"
-    for pattern in _SENSITIVE_PATTERNS:
-        s = pattern.sub("<redacted>", s)
-    return s
+# Alias local: mantém o nome antigo pra não quebrar chamadas internas.
+# A implementação real vive em app/utils/logging.py (LGPD-09/10).
+_sanitize_log_string = sanitize_log_string
 
 
 def _should_log_mp_error_detail() -> bool:
