@@ -37,6 +37,19 @@ class ProductService:
     # Admin
     # ============================================================
 
+    def get_by_id_any_status(self, product_id: str) -> dict:
+        """
+        Retorna produto por ID, independente de estar ativo.
+        Usado pelas rotas admin (detalhe + form de edição).
+
+        404 se não existir. Não filtra por `ativo` — admin precisa
+        enxergar inativos pra reativar/editar.
+        """
+        product = self.product_repo.get_by_id(product_id)
+        if not product:
+            raise NotFoundError("Produto não encontrado")
+        return self._hydrate(product)
+
     def create_product(self, data: dict) -> dict:
         """
         Cria produto. Valida slug único.

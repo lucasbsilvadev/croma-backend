@@ -29,6 +29,17 @@ async def list_all_products(
     return service.list_all()
 
 
+# ----- NOVO: detalhe por ID, independente de ativo -----
+@router.get("/{product_id}", response_model=ProductResponse)
+async def get_product(
+    product_id: str,
+    service: ProductService = Depends(get_product_service),
+):
+    """Detalhe de um produto (admin). Inclui inativos."""
+    return service.get_by_id_any_status(product_id)
+# --------------------------------------------------------
+
+
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(
     payload: ProductCreateRequest,
