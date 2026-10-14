@@ -115,3 +115,28 @@ class TestSoftDelete:
         repo.get_by_id.return_value = None
         with pytest.raises(NotFoundError):
             service.soft_delete("p-x")
+
+class TestGetByIdAnyStatus:
+    def test_returns_active_product(self, service, repo):
+        repo.get_by_id.return_value = {
+            "id": "p1", "nome": "X", "slug": "x", "ativo": True,
+            "preco": Decimal("10.00"), "estoque": 1, "descricao": None,
+            "created_at": "2026-10-04T00:00:00Z",
+        }
+        repo.list_images.return_value = []
+        assert service.get_by_id_any_status("p1")["id"] == "p1"
+
+    def test_returns_inactive_product(self, service, repo):
+        repo.get_by_id.return_value = {
+            "id": "p1", "nome": "X", "slug": "x", "ativo": False,
+            "preco": Decimal("10.00"), "estoque": 0, "descricao": None,
+            "created_at": "2026-10-04T00:00:00Z",
+        }
+        repo.list_images.return_value = []
+        # Essencial: inativo TEM que retornar (admin precisa editar/reativar)
+        assert service.get_by_id_any_status("p1")["ativo"] is False
+
+    def test_raises_404_when_missing(self, service, repo):
+        repo.get_by_id.return_value = None
+        with pytest.raises(NotFoundError):
+            service.get_by_id_any_status("p-x")
