@@ -53,3 +53,17 @@ class InvalidSignatureError(HTTPException):
 
     def __init__(self, detail: str = "Assinatura inválida"):
         super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+class StorageError(HTTPException):
+    """
+    Erro de comunicação com o storage externo (Cloudinary).
+    Equivalente ao PaymentError: 502 Bad Gateway, porque o problema
+    está a jusante (upstream provider), não no cliente.
+    """
+
+    def __init__(
+        self,
+        detail: str = "Falha no armazenamento",
+        status_code: int = status.HTTP_502_BAD_GATEWAY,
+    ):
+        super().__init__(status_code=status_code, detail=detail)
