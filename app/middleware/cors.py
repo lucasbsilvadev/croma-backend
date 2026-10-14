@@ -44,6 +44,6 @@ def setup_cors(app: FastAPI) -> None:
         CORSMiddleware,
         allow_origins=unique_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
     )
