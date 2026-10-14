@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
 from app.middleware.auth import get_current_admin_user
 from app.models.product import (
@@ -29,7 +29,6 @@ async def list_all_products(
     return service.list_all()
 
 
-# ----- NOVO: detalhe por ID, independente de ativo -----
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: str,
@@ -37,7 +36,6 @@ async def get_product(
 ):
     """Detalhe de um produto (admin). Inclui inativos."""
     return service.get_by_id_any_status(product_id)
-# --------------------------------------------------------
 
 
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -68,6 +66,11 @@ async def soft_delete_product(
     return service.soft_delete(product_id)
 
 
+# ============================================================
+# Imagens
+# ============================================================
+
+
 @router.post(
     "/{product_id}/images",
     response_model=ProductImageResponse,
@@ -78,11 +81,47 @@ async def add_product_image(
     payload: ProductImageCreateRequest,
     service: ProductService = Depends(get_product_service),
 ):
-    """Adiciona URL de imagem ao produto."""
+    """
+    Associa uma URL de imagem já existente ao produto.
+
+    Útil para reimportar catálogo, seeds, ou quando a imagem já mora
+    em outro lugar. Para upload de arquivo, use
+    POST /{product_id}/images/upload.
+    """
     return service.add_image(product_id, payload.url, payload.position)
 
 
-@router.delete("/{product_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/{product_id}/images/upload",
+    response_model=ProductImageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_product_image(
+    product_id: str,
+    file: UploadFile = File(...),
+    position: int = Form(...),
+    service: ProductService = Depends(get_product_service),
+):
+    """
+    Faz upload de uma imagem pro storage e associa ao produto.
+
+    Diferença pra `POST /{product_id}/images`: aquele aceita uma URL
+    já existente; este aceita o arquivo (multipart/form-data) e faz
+    o upload. Ambos terminam gravando em product_images.
+    """
+    content = await file.read()
+    return service.add_image_from_upload(
+        product_id=product_id,
+        file_bytes=content,
+        content_type=file.content_type or "",
+        position=position,
+    )
+
+
+@router.delete(
+    "/{product_id}/images/{image_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def remove_product_image(
     product_id: str,
     image_id: str,

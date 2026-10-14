@@ -1,7 +1,12 @@
 from decimal import Decimal
 
+from app.infra.cloudinary_client import CloudinaryClient
 from app.repositories.product_repository import ProductRepository
-from app.utils.exceptions import ConflictError, NotFoundError
+from app.utils.exceptions import (
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -12,8 +17,24 @@ class ProductService:
     Regras de negócio de produtos.
     """
 
-    def __init__(self, product_repo: ProductRepository | None = None):
+    # ============================================================
+    # Constantes de upload (validação fail-fast)
+    # ============================================================
+    IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+    IMAGE_ALLOWED_MIME = frozenset({
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+    })
+
+    def __init__(
+        self,
+        product_repo: ProductRepository | None = None,
+        cloudinary: CloudinaryClient | None = None,
+    ):
         self.product_repo = product_repo or ProductRepository()
+        self.cloudinary = cloudinary or CloudinaryClient()
 
     # ============================================================
     # Público
@@ -138,6 +159,13 @@ class ProductService:
     # ============================================================
 
     def add_image(self, product_id: str, url: str, position: int) -> dict:
+        """
+        Associa uma URL de imagem já existente ao produto.
+
+        Diferente de `add_image_from_upload`: aquele recebe bytes e faz
+        upload pro storage. Este recebe a URL pronta (útil para
+        reimportar catálogo, seeds, testes, etc).
+        """
         existing = self.product_repo.get_by_id(product_id)
         if not existing:
             raise NotFoundError("Produto não encontrado")
@@ -147,6 +175,57 @@ class ProductService:
         logger.info(
             "Imagem adicionada",
             extra={"event": "PRODUCT_IMAGE_ADDED"},
+        )
+
+        return image
+
+    def add_image_from_upload(
+        self,
+        *,
+        product_id: str,
+        file_bytes: bytes,
+        content_type: str,
+        position: int,
+    ) -> dict:
+        """
+        Sobe uma imagem pro storage e persiste a URL em product_images.
+
+        Validações (fail-fast, antes de gastar banda com o Cloudinary):
+        - produto existe
+        - content_type permitido
+        - arquivo não vazio
+        - arquivo <= IMAGE_MAX_BYTES
+        """
+        existing = self.product_repo.get_by_id(product_id)
+        if not existing:
+            raise NotFoundError("Produto não encontrado")
+
+        if content_type not in self.IMAGE_ALLOWED_MIME:
+            raise ValidationError(
+                f"Tipo de arquivo não permitido: "
+                f"{content_type or 'desconhecido'}. "
+                f"Aceitos: JPG, PNG, WEBP, GIF."
+            )
+
+        if not file_bytes:
+            raise ValidationError("Arquivo vazio")
+
+        if len(file_bytes) > self.IMAGE_MAX_BYTES:
+            mb = self.IMAGE_MAX_BYTES // (1024 * 1024)
+            raise ValidationError(f"Arquivo muito grande. Máximo: {mb} MB.")
+
+        uploaded = self.cloudinary.upload_product_image(
+            file_bytes=file_bytes,
+            product_id=product_id,
+        )
+
+        image = self.product_repo.add_image(
+            product_id, uploaded["url"], position
+        )
+
+        logger.info(
+            "Imagem enviada",
+            extra={"event": "PRODUCT_IMAGE_UPLOADED"},
         )
 
         return image
