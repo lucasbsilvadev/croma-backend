@@ -1,16 +1,16 @@
-# Croma Drip — Backend
+# croma — backend
 
-API FastAPI + Supabase para a Croma Drip.
+API FastAPI + supabase para a Croma Drip.
 
-## Requisitos
+## requisitos
 
-- Python 3.12 (ou 3.11)
-- Conta no Supabase (gratuita)
-- Git
+- python 3.12 (ou 3.11)
+- conta no Supabase (gratuita)
+- git
 
-## Setup local
+## setup local
 
-### 1. Clonar e criar venv
+### 1. clonar e criar venv
 
 ```bash
 git clone <url-do-repo>
@@ -18,9 +18,9 @@ cd croma-backend
 python -m venv .venv
 ```
 
-Ativar:
-- **Windows (PowerShell):** `.venv\Scripts\Activate.ps1`
-- **Mac/Linux:** `source .venv/bin/activate`
+ativar:
+- **windows (powerShell):** `.venv\Scripts\Activate.ps1`
+- **mac/linux:** `source .venv/bin/activate`
 
 ### 2. Instalar dependências
 
@@ -28,29 +28,29 @@ Ativar:
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-### 3. Criar projeto no Supabase
+### 3. criar projeto no Supabase
 
-1. Acesse [supabase.com/dashboard](https://supabase.com/dashboard)
-2. Crie um projeto novo (qualquer nome, região mais próxima)
-3. Anote:
-   - **Project URL** (Settings → API → Project URL)
+1. acesse [supabase.com/dashboard](https://supabase.com/dashboard)
+2. crie um projeto novo (qualquer nome, região mais próxima)
+3. anote:
+   - **project URL** (Settings → API → Project URL)
    - **anon public key** (Settings → API → Project API keys)
    - **service_role key** (Settings → API → Project API keys — é secreta)
 
-### 4. Configurar variáveis de ambiente
+### 4. configurar variáveis de ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-Preencha o `.env` com os valores do passo anterior.
+preencha o `.env` com os valores do passo anterior.
 
-### 5. Rodar as migrações no Supabase
+### 5. rodar as migrações no Supabase
 
-Abra o **SQL Editor** no dashboard do Supabase e rode o conteúdo de
-`docs/migrations.sql` (ou o script que o time te passar).
+abra o **SQL Editor** no dashboard do Supabase e rode o conteúdo de
+`docs/migrations.sql` (ou o script que o time te passar, caso o projeto tenha alteração não documentada nesse README.MD).
 
-### 6. Subir o servidor
+### 6. subir o servidor
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -70,7 +70,7 @@ Testes de integração (batem no Supabase real):
 pytest -m integration -v
 ```
 
-## Estrutura
+## estrutura
 
 ```
 app/
@@ -83,17 +83,17 @@ app/
 └── utils/        # Exceptions, logging, validators
 ```
 
-Fluxo: **Route → Service → Repository → Supabase**
+fluxo: **route → service → repository → supabase**
 
 ## Convenções
 
-- **Preço:** sempre `Decimal` no Python, serializado como string no JSON
+- **preço:** sempre `Decimal` no Python, serializado como string no JSON
 - **RBAC:** rotas `/admin/*` exigem `role='admin'`
-- **Soft delete:** `ativo=false`, nunca `DELETE` físico
-- **Logs:** JSON estruturado em `stdout` (eventos `AUTH_*`, `PRODUCT_*`,
+- **soft delete:** `ativo=false`, nunca `DELETE` físico
+- **logs:** JSON estruturado em `stdout` (eventos `AUTH_*`, `PRODUCT_*`,
   `ORDER_*`, `ADDRESS_*`, `SHIPPING_*`)
 - **Migrations:** via SQL Editor do Supabase (não usamos Alembic ainda)
 
-## Documentação adicional
+## documentação adicional
 
 - [`docs/auth.md`](docs/auth.md) — decisões arquiteturais do módulo de auth
